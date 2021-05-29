@@ -41,7 +41,7 @@ class Interpreter:
 		self.memory[self.data_ptr] %= (2 << (self.cell_size - 1))
 
 	def stdout(self):
-		sys.stdout.write(self.memory[self.data_ptr])
+		sys.stdout.write(chr(self.memory[self.data_ptr]))
 		sys.stdout.flush()
 
 	def stdin(self):
@@ -73,3 +73,25 @@ class Interpreter:
 
 		if self.stack:
 			Exception("BF script error: no matching closed bracket for open bracket")
+
+	def execute(self, tokens: list):
+		for token in tokens:
+			if isinstance(token, list):
+				while self.memory[self.data_ptr] != 0:
+					self.execute(token)
+			elif token == Token.IncrPtr:
+				self.incr_ptr()
+			elif token == Token.DecrPtr:
+				self.decr_ptr()
+			elif token == Token.Incr:
+				self.incr()
+			elif token == Token.Decr:
+				self.decr()
+			elif token == Token.StdOut:
+				self.stdout()
+			elif token == Token.StdIn:
+				self.stdin()
+
+	def run(self):
+		self.parse()
+		self.execute(self.tokens)
