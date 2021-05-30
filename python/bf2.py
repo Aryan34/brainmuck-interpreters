@@ -113,8 +113,8 @@ def main():
         raise Exception('Input error: incorrect filetype for {} (must be .b or .bf)'.format(script_path))
 
     with open(script_path, 'r') as file:
-        program = "".join([line.strip() for line in file.readlines()])
-        print(program)
+        instructions = set("><+-.,[]")
+        program = "".join([char for char in file.read() if char in instructions])
         interpreter = Interpreter(program, args.c, args.m)
         interpreter.run()
 
