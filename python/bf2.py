@@ -1,5 +1,7 @@
+import os
 import sys
 import enum
+import argparse
 
 
 class Token(enum.Enum):
@@ -14,7 +16,7 @@ class Token(enum.Enum):
 
 
 class Interpreter:
-	def __init__(self, program: str, c_size: int = 8, m_size: int = 30000):
+	def __init__(self, program: str, c_size: int, m_size: int):
 		self.stack = []                   # stack for keeping track of loops
 		self.tokens = []                  # tokenized list of brainfuck instructions
 		self.data_ptr = 0                 # pointer to current cell in memory
@@ -61,7 +63,7 @@ class Interpreter:
 					else:
 						self.tokens.append(loop)
 				else:
-					Exception(
+					raise Exception(
 						"BF script error: no matching open bracket for closed bracket at {}".format(self.instr_ptr))
 			else:
 				if self.stack:
@@ -72,7 +74,7 @@ class Interpreter:
 			self.instr_ptr += 1
 
 		if self.stack:
-			Exception("BF script error: no matching closed bracket for open bracket")
+			raise Exception("BF script error: no matching closed bracket for open bracket")
 
 	def execute(self, tokens: list):
 		for token in tokens:
@@ -95,3 +97,27 @@ class Interpreter:
 	def run(self):
 		self.parse()
 		self.execute(self.tokens)
+
+
+def main():
+	parser = argparse.ArgumentParser(description='An interpreter for brainfuck scripts.')
+	parser.add_argument("path", metavar="file-path", help="path to the brainfuck script")
+	parser.add_argument("-c", help="size of each memory cell (bits)", type=int, choices=[4, 8, 16, 32], default=8)
+	parser.add_argument("-m", metavar="memory-size", help="number of cells in memory", type=int, default=30000)
+
+	args = parser.parse_args()
+	script_path = args.path
+	if not os.path.isfile(script_path):
+		raise Exception('Input error: cannot open {} (no such file)'.format(script_path))
+	elif not (script_path.endswith('.b') or script_path.endswith('.bf')):
+		raise Exception('Input error: incorrect filetype for {} (must be .b or .bf)'.format(script_path))
+
+	with open(script_path, 'r') as file:
+		program = "".join([line.strip() for line in file.readlines()])
+		print(program)
+		interpreter = Interpreter(program, args.c, args.m)
+		interpreter.run()
+
+
+if __name__ == "__main__":
+	main()
