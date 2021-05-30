@@ -111,7 +111,7 @@ class Interpreter:
         parse_time = (parse_end - start) // unit_map[self.runtime_units][1]
         exec_time = (exec_end - parse_end) // unit_map[self.runtime_units][1]
 
-        print("Time to parse: {} {}".format(parse_time, unit_map[self.runtime_units][0]))
+        print("\nTime to parse: {} {}".format(parse_time, unit_map[self.runtime_units][0]))
         print("Time to execute: {} {}".format(exec_time, unit_map[self.runtime_units][0]))
 
 

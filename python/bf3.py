@@ -3,20 +3,10 @@ import sys
 import time
 import argparse
 from typing import NamedTuple
-from aenum import MultiValueEnum
-
-
-class Token(MultiValueEnum):
-    IncrPtr = ">", "<"
-    Incr = "+", "-"
-    StdOut = "."
-    StdIn = ","
-    LoopStart = "["
-    LoopEnd = "]"
 
 
 class CountedToken(NamedTuple):
-    token: Token
+    token: str
     count: int
 
 
@@ -37,8 +27,15 @@ class Interpreter:
         if self.data_ptr == len(self.memory):
             self.memory += [0] * (len(self.memory) // 2)
 
+    def decr_ptr(self, count: int):
+        self.data_ptr -= count
+
     def incr(self, count: int):
         self.memory[self.data_ptr] += count
+        self.memory[self.data_ptr] %= (2 << (self.cell_size - 1))
+
+    def decr(self, count: int):
+        self.memory[self.data_ptr] -= count
         self.memory[self.data_ptr] %= (2 << (self.cell_size - 1))
 
     def stdout(self, count: int):
@@ -51,12 +48,12 @@ class Interpreter:
 
     def parse(self):
         while self.instr_ptr < len(self.program):
-            token = Token(self.program[self.instr_ptr])
-            count = -1 if self.program[self.instr_ptr] in "<-" else 1
+            token = self.program[self.instr_ptr]
+            count = 1
 
-            if token == Token.LoopStart:
+            if token == "[":
                 self.stack.append([])
-            elif token == Token.LoopEnd:
+            elif token == "]":
                 if self.stack:
                     loop = self.stack.pop()
                     if self.stack:
@@ -67,9 +64,9 @@ class Interpreter:
                     raise Exception(
                         "BF script error: no matching open bracket for closed bracket at {}".format(self.instr_ptr))
             else:
-                while self.instr_ptr < len(self.program) - 1 and token == Token(self.program[self.instr_ptr + 1]):
+                while self.instr_ptr < len(self.program) - 1 and token == self.program[self.instr_ptr + 1]:
                     self.instr_ptr += 1
-                    count += -1 if self.program[self.instr_ptr] in "<-" else 1
+                    count += 1
 
                 c_token = CountedToken(token=token, count=count)
                 if self.stack:
@@ -87,13 +84,17 @@ class Interpreter:
             if isinstance(c_token, list):
                 while self.memory[self.data_ptr] != 0:
                     self.execute(c_token)
-            elif c_token.token == Token.IncrPtr:
+            elif c_token.token == ">":
                 self.incr_ptr(c_token.count)
-            elif c_token.token == Token.Incr:
+            elif c_token.token == "<":
+                self.decr_ptr(c_token.count)
+            elif c_token.token == "+":
                 self.incr(c_token.count)
-            elif c_token.token == Token.StdOut:
+            elif c_token.token == "-":
+                self.decr(c_token.count)
+            elif c_token.token == ".":
                 self.stdout(c_token.count)
-            elif c_token.token == Token.StdIn:
+            elif c_token.token == ",":
                 self.stdin(c_token.count)
 
     def run(self):
@@ -111,7 +112,7 @@ class Interpreter:
         parse_time = (parse_end - start) // unit_map[self.runtime_units][1]
         exec_time = (exec_end - parse_end) // unit_map[self.runtime_units][1]
 
-        print("Time to parse: {} {}".format(parse_time, unit_map[self.runtime_units][0]))
+        print("\nTime to parse: {} {}".format(parse_time, unit_map[self.runtime_units][0]))
         print("Time to execute: {} {}".format(exec_time, unit_map[self.runtime_units][0]))
 
 
