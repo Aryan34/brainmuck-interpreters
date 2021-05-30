@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import argparse
 from typing import NamedTuple
 from aenum import MultiValueEnum
@@ -20,7 +21,7 @@ class CountedToken(NamedTuple):
 
 
 class Interpreter:
-    def __init__(self, program: str, c_size: int, m_size: int):
+    def __init__(self, program: str, c_size: int, m_size: int, units: str):
         self.stack = []  # stack for keeping track of loops
         self.c_tokens = []  # tokenized list of brainfuck instructions
         self.data_ptr = 0  # pointer to current cell in memory
@@ -29,6 +30,7 @@ class Interpreter:
         self.cell_size = c_size  # size of memory cells (in bits)
         self.memory = [0] * m_size  # array of cells that serves as program memory
         self.max_int = 2 << (c_size - 1)  # max int size (greater values will wrap around past 0)
+        self.runtime_units = units  # units to measure and output runtime in
 
     def incr_ptr(self, count: int):
         self.data_ptr += count
@@ -95,8 +97,22 @@ class Interpreter:
                 self.stdin(c_token.count)
 
     def run(self):
+        unit_map = {"ns": ("nanoseconds", 1),
+                    "us": ("microseconds", 10 ** 3),
+                    "ms": ("milliseconds", 10 ** 6),
+                    "s": ("seconds", 10 ** 9)}
+
+        start = time.perf_counter_ns()
         self.parse()
+        parse_end = time.perf_counter_ns()
         self.execute(self.c_tokens)
+        exec_end = time.perf_counter_ns()
+
+        parse_time = (parse_end - start) // unit_map[self.runtime_units][1]
+        exec_time = (exec_end - parse_end) // unit_map[self.runtime_units][1]
+
+        print("Time to parse: {} {}".format(parse_time, unit_map[self.runtime_units][0]))
+        print("Time to execute: {} {}".format(exec_time, unit_map[self.runtime_units][0]))
 
 
 def main():
@@ -104,6 +120,7 @@ def main():
     parser.add_argument("path", metavar="file-path", help="path to the brainfuck script")
     parser.add_argument("-c", help="size of each memory cell (bits)", type=int, choices=[4, 8, 16, 32], default=8)
     parser.add_argument("-m", metavar="memory-size", help="number of cells in memory", type=int, default=30000)
+    parser.add_argument("-r", help="units to output runtime in", choices=["ns", "us", "ms", "s"], default="ms")
 
     args = parser.parse_args()
     script_path = args.path
@@ -115,7 +132,7 @@ def main():
     with open(script_path, 'r') as file:
         instructions = set("><+-.,[]")
         program = "".join([char for char in file.read() if char in instructions])
-        interpreter = Interpreter(program, args.c, args.m)
+        interpreter = Interpreter(program, args.c, args.m, args.r)
         interpreter.run()
 
 
